@@ -1,5 +1,7 @@
 package com.example.atmservice.controller;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -10,8 +12,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.security.Principal;
-
 @RestController
 @RequiredArgsConstructor
 public class ATMController {
@@ -20,16 +20,21 @@ public class ATMController {
 
     private final String BANK_SERVICE_URL = "http://localhost:8081";
 
+    public static final String ATMService = "ATMService";
+
+
     @GetMapping("/validate")
+    @Retry(name = ATMService, fallbackMethod = "bankServiceIsDownHandler")
     public ResponseEntity<?> validateCard(@RequestParam String cardNumber) {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/validate")
                 .queryParam("cardNumber",cardNumber)
                 .build();
 
         return apiTemplate.getForEntity(url.toString(), String.class);
-
     }
+
     @PostMapping("/auth")
+    @Retry(name = ATMService, fallbackMethod = "bankServiceIsDownHandler")
     public ResponseEntity<?> authenticateUser(@RequestParam String cardNumber, @RequestParam String pin) {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/auth")
                 .queryParam("cardNumber",cardNumber)
@@ -40,9 +45,11 @@ public class ATMController {
                 HttpMethod.POST,
                 null,
                 String.class
-        );    }
+        );
+    }
 
     @PostMapping("/deposit")
+    @Retry(name = ATMService, fallbackMethod = "bankServiceIsDownHandler")
     public ResponseEntity<?> deposit(@RequestHeader(value = "Authorization", required = false) String jwt, @RequestParam Double amount) {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/deposit")
                 .queryParam("amount", amount)
@@ -55,9 +62,11 @@ public class ATMController {
                 HttpMethod.POST,
                 request,
                 String.class
-        );    }
+        );
+    }
 
     @PostMapping("/withdraw")
+    @Retry(name = ATMService, fallbackMethod = "bankServiceIsDownHandler")
     public ResponseEntity<?> withdraw(@RequestHeader(value = "Authorization", required = false) String jwt, @RequestParam Double amount) {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/withdraw")
                 .queryParam("amount", amount)
@@ -74,6 +83,7 @@ public class ATMController {
     }
 
     @GetMapping("/balance")
+    @Retry(name = ATMService, fallbackMethod = "bankServiceIsDownHandler")
     public ResponseEntity<?> checkBalance(@RequestHeader(value = "Authorization", required = false) String jwt) {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/balance")
                 .build();
@@ -86,5 +96,9 @@ public class ATMController {
                 request,
                 String.class
         );
+    }
+
+    public ResponseEntity<String> bankServiceIsDownHandler(Exception e){
+        return ResponseEntity.ok("Bank Service is down. Please try again later.");
     }
 }
