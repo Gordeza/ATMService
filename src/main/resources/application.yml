@@ -27,3 +27,6 @@ resilience4j:
       ATMService:
         maxRetryAttempts: 2
         waitDuration: 2s
+bank-service-key:
+  header: EGS_HEADER
+  token: secret_key_EGS

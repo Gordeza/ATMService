@@ -3,6 +3,7 @@ package com.example.atmservice.controller;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,12 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RestController
 @RequiredArgsConstructor
 public class ATMController {
+
+    @Value("${bank-service-key.header}")
+    private String principalRequestHeader;
+
+    @Value("${bank-service-key.token}")
+    private String principalRequestToken;
 
     private final RestTemplate apiTemplate;
 
@@ -29,8 +36,15 @@ public class ATMController {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/validate")
                 .queryParam("cardNumber",cardNumber)
                 .build();
-
-        return apiTemplate.getForEntity(url.toString(), String.class);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(principalRequestHeader, principalRequestToken);
+        HttpEntity<String> request = new HttpEntity<String>(headers);
+        return apiTemplate.exchange(
+                url.toString(),
+                HttpMethod.GET,
+                request,
+                String.class
+        );
     }
 
     @PostMapping("/auth")
@@ -40,10 +54,13 @@ public class ATMController {
                 .queryParam("cardNumber",cardNumber)
                 .queryParam("pin",pin)
                 .build();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(principalRequestHeader, principalRequestToken);
+        HttpEntity<String> request = new HttpEntity<String>(headers);
         return apiTemplate.exchange(
                 url.toString(),
                 HttpMethod.POST,
-                null,
+                request,
                 String.class
         );
     }
@@ -56,6 +73,7 @@ public class ATMController {
                 .build();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", jwt);
+        headers.add(principalRequestHeader, principalRequestToken);
         HttpEntity<String> request = new HttpEntity<String>(headers);
         return apiTemplate.exchange(
                 url.toString(),
@@ -73,6 +91,7 @@ public class ATMController {
                 .build();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", jwt);
+        headers.add(principalRequestHeader, principalRequestToken);
         HttpEntity<String> request = new HttpEntity<String>(headers);
         return apiTemplate.exchange(
                 url.toString(),
@@ -88,6 +107,7 @@ public class ATMController {
         UriComponents url = UriComponentsBuilder.fromHttpUrl(BANK_SERVICE_URL + "/balance")
                 .build();
         HttpHeaders headers = new HttpHeaders();
+        headers.add(principalRequestHeader, principalRequestToken);
         headers.add("Authorization", jwt);
         HttpEntity<String> request = new HttpEntity<String>(headers);
         return apiTemplate.exchange(
